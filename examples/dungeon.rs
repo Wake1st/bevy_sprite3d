@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use bevy::asset::LoadState;
 use bevy::core_pipeline::bloom::BloomSettings;
 use bevy::core_pipeline::experimental::taa::TemporalAntiAliasBundle;
@@ -630,7 +632,6 @@ fn spawn_sprites(
                 }
                 .bundle_with_atlas(&mut sprite_params, atlas),
                 Player {},
-                FaceCamera {},
             ));
 
             if frames > 1 {
@@ -765,7 +766,7 @@ fn spawn_sprites(
 const CAM_DISTANCE: f32 = 25.0;
 const CAM_HEIGHT: f32 = 16.0;
 const PLAYER_SPEED: f32 = 4.2;
-// const CAM_SPEED: f32 = -0.1;
+const ROTATION_SPEED: f32 = PI * 2.0;
 
 // camera will always orbit 0,0,0, but can look somewhere slightly different
 // const CAM_TARGET_X: f32 = 2.0;
@@ -812,20 +813,55 @@ fn player_movement(
     time: Res<Time>,
 ) {
     let movement_amount = PLAYER_SPEED * time.delta_seconds();
+    let rotation_amount = ROTATION_SPEED * time.delta_seconds();
 
     for mut transform in &mut query {
+        // let euler = transform.rotation.to_euler(EulerRot::YXZ);
+        // let mut direction: Vec2 = Vec2::ZERO;
+        let mut rotation_factor = 0.0;
+        let mut movement_factor = Vec3::ZERO;
+
+        // gather user inputs
+        if input.pressed(KeyCode::KeyA) {
+            rotation_factor += 1.0;
+        }
+        if input.pressed(KeyCode::KeyD) {
+            rotation_factor -= 1.0;
+        }
+
+        // update the ship rotation around the Y axis (perpendicular to the 2D plane of the screen)
+        transform.rotate_y(rotation_factor * rotation_amount);
+
+        // get the ship's forward vector by applying the current rotation to the ships initial facing vector
+        let movement_direction = transform.rotation * Vec3::Z;
+
         if input.pressed(KeyCode::ArrowUp) {
-            transform.translation.z -= movement_amount;
+            movement_factor.z -= 1.0;
         }
         if input.pressed(KeyCode::ArrowDown) {
-            transform.translation.z += movement_amount;
+            movement_factor.z += 1.0;
         }
         if input.pressed(KeyCode::ArrowRight) {
-            transform.translation.x += movement_amount;
+            movement_factor.x += 1.0;
         }
         if input.pressed(KeyCode::ArrowLeft) {
-            transform.translation.x -= movement_amount;
+            movement_factor.x -= 1.0;
         }
+        // get the distance the ship will move based on direction, the ship's movement speed and delta time
+        let movement_distance = movement_factor * movement_amount;
+        // create the change in translation using the new movement direction and distance
+        let mut translation_delta = Vec3::ZERO;
+        translation_delta.z =
+            movement_direction.z * movement_distance.z - movement_direction.z * movement_distance.x;
+        translation_delta.x =
+            movement_direction.x * movement_distance.z - movement_direction.x * movement_distance.x;
+        // update the ship translation with our new translation delta
+        transform.translation += translation_delta;
+
+        println!(
+            "direction: {:?}\t|factor: {:?}\t| delta: {:?}\t| trans: {:?}",
+            movement_direction, movement_factor, translation_delta, transform.translation
+        );
     }
 }
 
@@ -837,10 +873,11 @@ fn camera_follow_player(
 
     for &player_transform in &player_query {
         let p_trans = player_transform.translation;
+        let p_euler = player_transform.rotation.to_euler(EulerRot::YXZ);
 
         transform.translation.y = p_trans.y + CAM_HEIGHT;
-        transform.translation.x = p_trans.x;
-        transform.translation.z = p_trans.z + CAM_DISTANCE;
+        transform.translation.x = p_trans.x + CAM_DISTANCE * f32::sin(p_euler.0);
+        transform.translation.z = p_trans.z + CAM_DISTANCE * f32::cos(p_euler.0);
         transform.look_at(Vec3::new(p_trans.x, 0.0, p_trans.z), Vec3::Y);
     }
 }
