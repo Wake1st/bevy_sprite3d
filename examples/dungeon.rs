@@ -833,7 +833,8 @@ fn player_movement(
         transform.rotate_y(rotation_factor * rotation_amount);
 
         // get the ship's forward vector by applying the current rotation to the ships initial facing vector
-        let movement_direction = transform.rotation * Vec3::Z;
+        let z_direction = transform.rotation * Vec3::Z;
+        let x_direction = transform.rotation * Vec3::X;
 
         if input.pressed(KeyCode::ArrowUp) {
             movement_factor.z -= 1.0;
@@ -842,26 +843,24 @@ fn player_movement(
             movement_factor.z += 1.0;
         }
         if input.pressed(KeyCode::ArrowRight) {
-            movement_factor.x += 1.0;
+            movement_factor.x -= 1.0;
         }
         if input.pressed(KeyCode::ArrowLeft) {
-            movement_factor.x -= 1.0;
+            movement_factor.x += 1.0;
         }
         // get the distance the ship will move based on direction, the ship's movement speed and delta time
         let movement_distance = movement_factor * movement_amount;
         // create the change in translation using the new movement direction and distance
         let mut translation_delta = Vec3::ZERO;
-        translation_delta.z =
-            movement_direction.z * movement_distance.z - movement_direction.z * movement_distance.x;
-        translation_delta.x =
-            movement_direction.x * movement_distance.z - movement_direction.x * movement_distance.x;
+        translation_delta.z = movement_distance.dot(z_direction);
+        translation_delta.x = movement_distance.dot(-x_direction);
         // update the ship translation with our new translation delta
         transform.translation += translation_delta;
 
-        println!(
-            "direction: {:?}\t|factor: {:?}\t| delta: {:?}\t| trans: {:?}",
-            movement_direction, movement_factor, translation_delta, transform.translation
-        );
+        // println!(
+        //     "direction: {:?}\t|factor: {:?}\t| delta: {:?}\t| trans: {:?}",
+        //     movement_direction, movement_factor, translation_delta, transform.translation
+        // );
     }
 }
 
