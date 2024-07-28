@@ -615,8 +615,6 @@ fn spawn_sprites(
         let mut timer = Timer::from_seconds(0.4, TimerMode::Repeating);
         timer.set_elapsed(Duration::from_secs_f32(rng.gen_range(0.0..0.4)));
 
-        // let mut c = commands.spawn(Player {});
-
         for i in 0usize..height {
             let atlas = TextureAtlas {
                 layout: images.layout.clone(),
